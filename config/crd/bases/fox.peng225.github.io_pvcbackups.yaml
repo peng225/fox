@@ -15,7 +15,17 @@ spec:
     singular: pvcbackup
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.sourcePVC
+      name: SOURCE_PVC
+      type: string
+    - jsonPath: .spec.destinationPVC
+      name: DESTINATION_PVC
+      type: string
+    - jsonPath: .status.backupStatus
+      name: BACKUP_STATUS
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: PVCBackup is the Schema for the pvcbackups API
@@ -35,13 +45,22 @@ spec:
           spec:
             description: PVCBackupSpec defines the desired state of PVCBackup
             properties:
-              foo:
-                description: Foo is an example field of PVCBackup. Edit pvcbackup_types.go
-                  to remove/update
+              destinationPVC:
+                description: Destination PVC name
                 type: string
+              sourcePVC:
+                description: Source PVC name
+                type: string
+            required:
+            - destinationPVC
+            - sourcePVC
             type: object
           status:
             description: PVCBackupStatus defines the observed state of PVCBackup
+            properties:
+              backupStatus:
+                description: PVC backup status
+                type: string
             type: object
         type: object
     served: true

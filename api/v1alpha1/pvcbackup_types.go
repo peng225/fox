@@ -20,26 +20,36 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	BackupNotStarted = "NotStarted"
+	BackupInProgress = "InProgress"
+	BackupFinished   = "Finished"
+)
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // PVCBackupSpec defines the desired state of PVCBackup
 type PVCBackupSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of PVCBackup. Edit pvcbackup_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Source PVC name
+	//+kubebuilder:validation:Required
+	SourcePVC string `json:"sourcePVC"`
+	// Destination PVC name
+	//+kubebuilder:validation:Required
+	DestinationPVC string `json:"destinationPVC"`
 }
 
 // PVCBackupStatus defines the observed state of PVCBackup
 type PVCBackupStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// PVC backup status
+	BackupStatus string `json:"backupStatus,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="SOURCE_PVC",type="string",JSONPath=".spec.sourcePVC"
+//+kubebuilder:printcolumn:name="DESTINATION_PVC",type="string",JSONPath=".spec.destinationPVC"
+//+kubebuilder:printcolumn:name="BACKUP_STATUS",type="string",JSONPath=".status.backupStatus"
 
 // PVCBackup is the Schema for the pvcbackups API
 type PVCBackup struct {
