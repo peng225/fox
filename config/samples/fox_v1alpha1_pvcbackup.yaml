@@ -1,0 +1,6 @@
+apiVersion: fox.peng225.github.io/v1alpha1
+kind: PVCBackup
+metadata:
+  name: pvcbackup-sample
+spec:
+  # TODO(user): Add fields here

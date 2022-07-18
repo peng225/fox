@@ -1,0 +1,24 @@
+# permissions for end users to edit pvcbackups.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pvcbackup-editor-role
+rules:
+- apiGroups:
+  - fox.peng225.github.io
+  resources:
+  - pvcbackups
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - fox.peng225.github.io
+  resources:
+  - pvcbackups/status
+  verbs:
+  - get

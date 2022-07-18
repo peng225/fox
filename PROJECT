@@ -3,4 +3,14 @@ layout:
 - go.kubebuilder.io/v3
 projectName: fox
 repo: github.com/peng225/fox
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: peng225.github.io
+  group: fox
+  kind: PVCBackup
+  path: github.com/peng225/fox/api/v1alpha1
+  version: v1alpha1
 version: "3"
