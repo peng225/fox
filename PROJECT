@@ -1,0 +1,6 @@
+domain: peng225.github.io
+layout:
+- go.kubebuilder.io/v3
+projectName: fox
+repo: github.com/peng225/fox
+version: "3"
