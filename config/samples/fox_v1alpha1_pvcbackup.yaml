@@ -3,4 +3,5 @@ kind: PVCBackup
 metadata:
   name: pvcbackup-sample
 spec:
-  # TODO(user): Add fields here
+  sourcePVC: test-src-pvc
+  destinationStorageClass: test-dst-sc
