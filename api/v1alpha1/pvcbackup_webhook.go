@@ -42,7 +42,7 @@ var _ webhook.Defaulter = &PVCBackup{}
 func (r *PVCBackup) Default() {
 	pvcbackuplog.Info("default", "name", r.Name)
 
-	// TODO(user): fill in your defaulting logic.
+	r.Status.BackupStatus = BackupNotStarted
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
