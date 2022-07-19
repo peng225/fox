@@ -34,15 +34,17 @@ type PVCBackupSpec struct {
 	// Source PVC name
 	//+kubebuilder:validation:Required
 	SourcePVC string `json:"sourcePVC"`
-	// Destination PVC name
+	// Storage class name from which the destination PVC is created
 	//+kubebuilder:validation:Required
-	DestinationPVC string `json:"destinationPVC"`
+	DestinationStorageClass string `json:"destinationStorageClass"`
 }
 
 // PVCBackupStatus defines the observed state of PVCBackup
 type PVCBackupStatus struct {
 	// PVC backup status
 	BackupStatus string `json:"backupStatus,omitempty"`
+	// Destination PVC name
+	DestinationPVC string `json:"destinationPVC"`
 }
 
 //+kubebuilder:object:root=true
