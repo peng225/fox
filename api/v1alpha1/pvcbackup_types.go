@@ -24,6 +24,7 @@ const (
 	BackupNotStarted = "NotStarted"
 	BackupInProgress = "InProgress"
 	BackupFinished   = "Finished"
+	BackupError      = "Error"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
