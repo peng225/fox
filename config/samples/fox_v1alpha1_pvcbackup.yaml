@@ -4,4 +4,16 @@ metadata:
   name: pvcbackup-sample
 spec:
   sourcePVC: test-src-pvc
-  destinationStorageClass: test-dst-sc
+  destinationStorageClass: standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-src-pvc
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 512Mi
