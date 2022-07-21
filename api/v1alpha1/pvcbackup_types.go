@@ -45,7 +45,7 @@ type PVCBackupStatus struct {
 	// PVC backup status
 	BackupStatus string `json:"backupStatus,omitempty"`
 	// Destination PVC name
-	DestinationPVC string `json:"destinationPVC"`
+	DestinationPVC string `json:"destinationPVC,omitempty"`
 }
 
 //+kubebuilder:object:root=true
