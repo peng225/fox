@@ -139,9 +139,9 @@ func (r *PVCBackupReconciler) createDestinationPVC(ctx context.Context, pvcBacku
 	// Even if the controller crashes right after creating the destination PVC,
 	// the destination PVC must be found in the next reconciliation loop.
 	// So its name must be definitely generated from the namespace and the name of PVCBackup CR.
-	destinationPVC := generatePVCName(pvcBackup)
+	destinationPVCName := generatePVCName(pvcBackup)
 	var pvc v1.PersistentVolumeClaim
-	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Namespace, Name: destinationPVC}, &pvc)
+	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Namespace, Name: destinationPVCName}, &pvc)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			srcPVCCapacity, err := r.getSourcePVCCapacity(ctx, pvcBackup)
@@ -151,7 +151,7 @@ func (r *PVCBackupReconciler) createDestinationPVC(ctx context.Context, pvcBacku
 			volumeMode := corev1.PersistentVolumeFilesystem
 			pvc := v1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      destinationPVC,
+					Name:      destinationPVCName,
 					Namespace: pvcBackup.Namespace,
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
@@ -172,7 +172,7 @@ func (r *PVCBackupReconciler) createDestinationPVC(ctx context.Context, pvcBacku
 		}
 	}
 
-	pvcBackup.Status.DestinationPVC = destinationPVC
+	pvcBackup.Status.DestinationPVC = destinationPVCName
 	return nil
 }
 
@@ -188,14 +188,14 @@ func (r *PVCBackupReconciler) getSourcePVCCapacity(ctx context.Context, pvcBacku
 
 func (r *PVCBackupReconciler) startBackupJob(ctx context.Context, pvcBackup *foxv1alpha1.PVCBackup) error {
 	// TODO: mount src/dst PVC and start backup.
-	backupJob := generateBackupJobName(pvcBackup)
+	backupJobName := generateBackupJobName(pvcBackup)
 	var job batchv1.Job
-	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Namespace, Name: backupJob}, &job)
+	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Namespace, Name: backupJobName}, &job)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			job := batchv1.Job{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      backupJob,
+					Name:      backupJobName,
 					Namespace: pvcBackup.Namespace,
 				},
 				Spec: batchv1.JobSpec{
@@ -207,7 +207,7 @@ func (r *PVCBackupReconciler) startBackupJob(ctx context.Context, pvcBackup *fox
 							RestartPolicy: corev1.RestartPolicyOnFailure,
 							Containers: []corev1.Container{
 								{
-									Name:    backupJob,
+									Name:    backupJobName,
 									Image:   "ubuntu:20.04",
 									Command: []string{"sleep"},
 									Args:    []string{"30"},
@@ -229,9 +229,9 @@ func (r *PVCBackupReconciler) startBackupJob(ctx context.Context, pvcBackup *fox
 }
 
 func (r *PVCBackupReconciler) isBackupJobCompleted(ctx context.Context, pvcBackup *foxv1alpha1.PVCBackup) (bool, error) {
-	backupJob := generateBackupJobName(pvcBackup)
+	backupJobName := generateBackupJobName(pvcBackup)
 	var job batchv1.Job
-	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Namespace, Name: backupJob}, &job)
+	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Namespace, Name: backupJobName}, &job)
 	if err != nil {
 		return false, err
 	}
