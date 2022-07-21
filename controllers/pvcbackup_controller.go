@@ -163,6 +163,10 @@ func (r *PVCBackupReconciler) createDestinationPVC(ctx context.Context, pvcBacku
 					},
 				},
 			}
+			err = ctrl.SetControllerReference(pvcBackup, &pvc, r.Scheme)
+			if err != nil {
+				return err
+			}
 			err = r.Create(ctx, &pvc)
 			if err != nil {
 				return err
@@ -216,6 +220,10 @@ func (r *PVCBackupReconciler) startBackupJob(ctx context.Context, pvcBackup *fox
 						},
 					},
 				},
+			}
+			err = ctrl.SetControllerReference(pvcBackup, &job, r.Scheme)
+			if err != nil {
+				return err
 			}
 			err := r.Create(ctx, &job)
 			if err != nil {
