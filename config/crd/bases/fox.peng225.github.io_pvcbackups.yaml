@@ -19,7 +19,7 @@ spec:
     - jsonPath: .spec.sourcePVC
       name: SOURCE_PVC
       type: string
-    - jsonPath: .spec.destinationPVC
+    - jsonPath: .status.destinationPVC
       name: DESTINATION_PVC
       type: string
     - jsonPath: .status.backupStatus

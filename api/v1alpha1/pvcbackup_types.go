@@ -51,7 +51,7 @@ type PVCBackupStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="SOURCE_PVC",type="string",JSONPath=".spec.sourcePVC"
-//+kubebuilder:printcolumn:name="DESTINATION_PVC",type="string",JSONPath=".spec.destinationPVC"
+//+kubebuilder:printcolumn:name="DESTINATION_PVC",type="string",JSONPath=".status.destinationPVC"
 //+kubebuilder:printcolumn:name="BACKUP_STATUS",type="string",JSONPath=".status.backupStatus"
 
 // PVCBackup is the Schema for the pvcbackups API
