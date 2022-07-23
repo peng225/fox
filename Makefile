@@ -1,6 +1,7 @@
 
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
+RDIFF_BK_IMG ?= rdiff-backup:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24.1
 
@@ -76,6 +77,10 @@ docker-build: test ## Build docker image with the manager.
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
+
+.PHONY: rdiff-backup
+rdiff-backup: ## Build docker image with rdiff-backup.
+	docker build -t ${RDIFF_BK_IMG} rdiff-backup
 
 ##@ Deployment
 
