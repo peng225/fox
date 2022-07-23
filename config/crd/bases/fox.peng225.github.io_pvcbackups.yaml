@@ -16,10 +16,16 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .spec.sourceNamespace
+      name: SOURCE_NAMESPACE
+      type: string
     - jsonPath: .spec.sourcePVC
       name: SOURCE_PVC
       type: string
-    - jsonPath: .status.destinationPVC
+    - jsonPath: .spec.destinationNamespace
+      name: DESTINATION_NAMESPACE
+      type: string
+    - jsonPath: .spec.destinationPVC
       name: DESTINATION_PVC
       type: string
     - jsonPath: .status.backupStatus
@@ -45,25 +51,31 @@ spec:
           spec:
             description: PVCBackupSpec defines the desired state of PVCBackup
             properties:
-              destinationStorageClass:
-                description: Storage class name from which the destination PVC is
-                  created
+              destinationNamespace:
+                description: The namespace where the the destination PVC is created
+                type: string
+              destinationPVC:
+                description: Destination PVC name
+                type: string
+              sourceNamespace:
+                description: The namespace where the the source PVC is located
                 type: string
               sourcePVC:
                 description: Source PVC name
                 type: string
             required:
-            - destinationStorageClass
+            - destinationPVC
+            - sourceNamespace
             - sourcePVC
             type: object
           status:
             description: PVCBackupStatus defines the observed state of PVCBackup
             properties:
+              backupDateAndTime:
+                description: The date and time when the backup has finished
+                type: string
               backupStatus:
                 description: PVC backup status
-                type: string
-              destinationPVC:
-                description: Destination PVC name
                 type: string
             type: object
         type: object

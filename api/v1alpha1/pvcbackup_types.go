@@ -32,26 +32,33 @@ const (
 
 // PVCBackupSpec defines the desired state of PVCBackup
 type PVCBackupSpec struct {
+	// The namespace where the the source PVC is located
+	//+kubebuilder:validation:Required
+	SourceNamespace string `json:"sourceNamespace"`
 	// Source PVC name
 	//+kubebuilder:validation:Required
 	SourcePVC string `json:"sourcePVC"`
-	// Storage class name from which the destination PVC is created
+	// The namespace where the the destination PVC is created
+	DestinationNamespace string `json:"destinationNamespace,omitempty"`
+	// Destination PVC name
 	//+kubebuilder:validation:Required
-	DestinationStorageClass string `json:"destinationStorageClass"`
+	DestinationPVC string `json:"destinationPVC"`
 }
 
 // PVCBackupStatus defines the observed state of PVCBackup
 type PVCBackupStatus struct {
 	// PVC backup status
 	BackupStatus string `json:"backupStatus,omitempty"`
-	// Destination PVC name
-	DestinationPVC string `json:"destinationPVC,omitempty"`
+	// The date and time when the backup has finished
+	BackupDateAndTime string `json:"backupDateAndTime,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="SOURCE_NAMESPACE",type="string",JSONPath=".spec.sourceNamespace"
 //+kubebuilder:printcolumn:name="SOURCE_PVC",type="string",JSONPath=".spec.sourcePVC"
-//+kubebuilder:printcolumn:name="DESTINATION_PVC",type="string",JSONPath=".status.destinationPVC"
+//+kubebuilder:printcolumn:name="DESTINATION_NAMESPACE",type="string",JSONPath=".spec.destinationNamespace"
+//+kubebuilder:printcolumn:name="DESTINATION_PVC",type="string",JSONPath=".spec.destinationPVC"
 //+kubebuilder:printcolumn:name="BACKUP_STATUS",type="string",JSONPath=".status.backupStatus"
 
 // PVCBackup is the Schema for the pvcbackups API
