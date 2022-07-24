@@ -1,15 +1,13 @@
-apiVersion: fox.peng225.github.io/v1alpha1
-kind: PVCBackup
+kind: Namespace
+apiVersion: v1
 metadata:
-  name: pvcbackup-sample
-spec:
-  sourcePVC: test-src-pvc
-  destinationStorageClass: standard
+  name: test
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: test-src-pvc
+  namespace: test
 spec:
   storageClassName: standard
   accessModes:
@@ -17,3 +15,40 @@ spec:
   resources:
     requests:
       storage: 512Mi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-dst-pvc
+  namespace: test
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: fox.peng225.github.io/v1alpha1
+kind: PVCBackup
+metadata:
+  name: pvcbackup-sample
+  namespace: test
+spec:
+  sourceNamespace: test
+  sourcePVC: test-src-pvc
+  destinationNamespace: test
+  destinationPVC: test-dst-pvc
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tool
+  namespace: test
+spec:
+  containers:
+  - name: container1
+    image: rdiff-backup:latest
+    imagePullPolicy: IfNotPresent
+    command: ["sleep"]
+    args: ["infinity"]
