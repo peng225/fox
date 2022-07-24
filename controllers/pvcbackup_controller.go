@@ -22,7 +22,6 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,7 +45,7 @@ const (
 //+kubebuilder:rbac:groups=fox.peng225.github.io,resources=pvcbackups,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=fox.peng225.github.io,resources=pvcbackups/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=fox.peng225.github.io,resources=pvcbackups/finalizers,verbs=update
-//+kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;update;patch
 
@@ -78,16 +77,12 @@ func (r *PVCBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
+	// TODO: check the all log message
 	originalBackupStatus := pvcBackup.Status.BackupStatus
 	switch pvcBackup.Status.BackupStatus {
 	case "":
 		pvcBackup.Status.BackupStatus = foxv1alpha1.BackupNotStarted
 	case foxv1alpha1.BackupNotStarted:
-		err := r.createDestinationPVC(ctx, &pvcBackup)
-		if err != nil {
-			logger.Error(err, "createDestinationPVC failed", "name", req.NamespacedName)
-			return ctrl.Result{}, err
-		}
 		err = r.startBackupJob(ctx, &pvcBackup)
 		if err != nil {
 			logger.Error(err, "startBackupJob failed", "name", req.NamespacedName)
@@ -96,6 +91,7 @@ func (r *PVCBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		pvcBackup.Status.BackupStatus = foxv1alpha1.BackupInProgress
 		logger.Info("Update status to BackupInProgress", "name", req.NamespacedName)
 	case foxv1alpha1.BackupInProgress:
+		// TODO: Consider the case where a job vanishes due to the repeated failures.
 		bkJobFinished, err := r.isBackupJobCompleted(ctx, &pvcBackup)
 		if err != nil {
 			logger.Error(err, "isBackupJobCompleted failed", "name", req.NamespacedName)
@@ -130,44 +126,58 @@ func (r *PVCBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *PVCBackupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&foxv1alpha1.PVCBackup{}).
-		Owns(&corev1.PersistentVolumeClaim{}).
+		Owns(&corev1.Pod{}).
 		Owns(&batchv1.Job{}).
 		Complete(r)
 }
 
-func (r *PVCBackupReconciler) createDestinationPVC(ctx context.Context, pvcBackup *foxv1alpha1.PVCBackup) error {
-	// Even if the controller crashes right after creating the destination PVC,
-	// the destination PVC must be found in the next reconciliation loop.
-	// So its name must be definitely generated from the namespace and the name of PVCBackup CR.
-	destinationPVCName := generatePVCName(pvcBackup)
-	var pvc v1.PersistentVolumeClaim
-	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Namespace, Name: destinationPVCName}, &pvc)
+func (r *PVCBackupReconciler) startBackupJob(ctx context.Context, pvcBackup *foxv1alpha1.PVCBackup) error {
+	// Create a source Pod
+	sourcePodName := generateSourcePodName(pvcBackup)
+	var srcPod corev1.Pod
+	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Spec.SourceNamespace, Name: sourcePodName}, &srcPod)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			srcPVCCapacity, err := r.getSourcePVCCapacity(ctx, pvcBackup)
-			if err != nil {
-				return err
-			}
-			volumeMode := corev1.PersistentVolumeFilesystem
-			pvc := v1.PersistentVolumeClaim{
+			srcPod = corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      destinationPVCName,
-					Namespace: pvcBackup.Namespace,
+					Name:      sourcePodName,
+					Namespace: pvcBackup.Spec.DestinationNamespace,
+					Labels:    map[string]string{"app": "fox"},
 				},
-				Spec: corev1.PersistentVolumeClaimSpec{
-					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-					StorageClassName: &pvcBackup.Spec.DestinationStorageClass,
-					VolumeMode:       &volumeMode,
-					Resources: corev1.ResourceRequirements{
-						Requests: *srcPVCCapacity,
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyOnFailure,
+					Containers: []corev1.Container{
+						{
+							Name:            sourcePodName,
+							Image:           "rdiff-backup:latest",
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command:         []string{"/bin/sh", "-c"},
+							Args:            []string{"service ssh start && sleep infinity"},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "data",
+									MountPath: "/data",
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "data",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: pvcBackup.Spec.SourcePVC,
+								},
+							},
+						},
 					},
 				},
 			}
-			err = ctrl.SetControllerReference(pvcBackup, &pvc, r.Scheme)
+			err = ctrl.SetControllerReference(pvcBackup, &srcPod, r.Scheme)
 			if err != nil {
 				return err
 			}
-			err = r.Create(ctx, &pvc)
+			err := r.Create(ctx, &srcPod)
 			if err != nil {
 				return err
 			}
@@ -176,31 +186,20 @@ func (r *PVCBackupReconciler) createDestinationPVC(ctx context.Context, pvcBacku
 		}
 	}
 
-	pvcBackup.Status.DestinationPVC = destinationPVCName
-	return nil
-}
-
-func (r *PVCBackupReconciler) getSourcePVCCapacity(ctx context.Context, pvcBackup *foxv1alpha1.PVCBackup) (*corev1.ResourceList, error) {
-	var pvc v1.PersistentVolumeClaim
-	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Namespace, Name: pvcBackup.Spec.SourcePVC}, &pvc)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pvc.Spec.Resources.Requests, nil
-}
-
-func (r *PVCBackupReconciler) startBackupJob(ctx context.Context, pvcBackup *foxv1alpha1.PVCBackup) error {
-	// TODO: mount src/dst PVC and start backup.
+	// Create a destination Job
 	backupJobName := generateBackupJobName(pvcBackup)
-	var job batchv1.Job
-	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Namespace, Name: backupJobName}, &job)
+	var dstJob batchv1.Job
+	err = r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Spec.DestinationNamespace, Name: backupJobName}, &dstJob)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			job := batchv1.Job{
+			if srcPod.Status.PodIP == "" {
+				return fmt.Errorf("no IP address is assigned to the source pod")
+			}
+			dstJob = batchv1.Job{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      backupJobName,
-					Namespace: pvcBackup.Namespace,
+					Namespace: pvcBackup.Spec.SourceNamespace,
+					Labels:    map[string]string{"app": "fox"},
 				},
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
@@ -211,21 +210,40 @@ func (r *PVCBackupReconciler) startBackupJob(ctx context.Context, pvcBackup *fox
 							RestartPolicy: corev1.RestartPolicyOnFailure,
 							Containers: []corev1.Container{
 								{
-									Name:    backupJobName,
-									Image:   "ubuntu:20.04",
-									Command: []string{"sleep"},
-									Args:    []string{"30"},
+									Name:            backupJobName,
+									Image:           "rdiff-backup:latest",
+									ImagePullPolicy: corev1.PullIfNotPresent,
+									Command:         []string{"/bin/sh", "-c"},
+									Args: []string{
+										"rdiff-backup --remote-schema 'ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -C %s rdiff-backup --server' --print " + srcPod.Status.PodIP + "::/data /backup",
+									},
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name:      "backup",
+											MountPath: "/backup",
+										},
+									},
+								},
+							},
+							Volumes: []corev1.Volume{
+								{
+									Name: "backup",
+									VolumeSource: corev1.VolumeSource{
+										PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+											ClaimName: pvcBackup.Spec.DestinationPVC,
+										},
+									},
 								},
 							},
 						},
 					},
 				},
 			}
-			err = ctrl.SetControllerReference(pvcBackup, &job, r.Scheme)
+			err = ctrl.SetControllerReference(pvcBackup, &dstJob, r.Scheme)
 			if err != nil {
 				return err
 			}
-			err := r.Create(ctx, &job)
+			err := r.Create(ctx, &dstJob)
 			if err != nil {
 				return err
 			}
@@ -233,26 +251,28 @@ func (r *PVCBackupReconciler) startBackupJob(ctx context.Context, pvcBackup *fox
 			return err
 		}
 	}
+
 	return nil
 }
 
 func (r *PVCBackupReconciler) isBackupJobCompleted(ctx context.Context, pvcBackup *foxv1alpha1.PVCBackup) (bool, error) {
+	// TODO: handle the case where a job completes with an error status.
 	backupJobName := generateBackupJobName(pvcBackup)
-	var job batchv1.Job
-	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Namespace, Name: backupJobName}, &job)
+	var dstJob batchv1.Job
+	err := r.Get(ctx, client.ObjectKey{Namespace: pvcBackup.Spec.DestinationNamespace, Name: backupJobName}, &dstJob)
 	if err != nil {
 		return false, err
 	}
-	if job.Status.CompletionTime.IsZero() {
+	if dstJob.Status.CompletionTime.IsZero() {
 		return false, nil
 	}
 	return true, nil
 }
 
-func generatePVCName(pvcBackup *foxv1alpha1.PVCBackup) string {
-	return "pvc-backup-" + pvcBackup.Namespace + "-" + pvcBackup.Name
+func generateBackupJobName(pvcBackup *foxv1alpha1.PVCBackup) string {
+	return "pvc-backup-job-" + pvcBackup.Spec.DestinationNamespace + "-" + pvcBackup.Name
 }
 
-func generateBackupJobName(pvcBackup *foxv1alpha1.PVCBackup) string {
-	return "pvc-backup-job-" + pvcBackup.Namespace + "-" + pvcBackup.Name
+func generateSourcePodName(pvcBackup *foxv1alpha1.PVCBackup) string {
+	return "pvc-backup-pod-" + pvcBackup.Spec.SourceNamespace + "-" + pvcBackup.Name
 }
