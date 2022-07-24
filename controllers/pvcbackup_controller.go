@@ -92,19 +92,19 @@ func (r *PVCBackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		logger.Info("Update status to BackupInProgress", "name", req.NamespacedName)
 	case foxv1alpha1.BackupInProgress:
 		// TODO: Consider the case where a job vanishes due to the repeated failures.
-		bkJobFinished, err := r.isBackupJobCompleted(ctx, &pvcBackup)
+		bkJobCompleted, err := r.isBackupJobCompleted(ctx, &pvcBackup)
 		if err != nil {
 			logger.Error(err, "isBackupJobCompleted failed", "name", req.NamespacedName)
 			return ctrl.Result{}, err
-		} else if bkJobFinished {
-			pvcBackup.Status.BackupStatus = foxv1alpha1.BackupFinished
-			logger.Info("Update status to BackupFinished", "name", req.NamespacedName)
+		} else if bkJobCompleted {
+			pvcBackup.Status.BackupStatus = foxv1alpha1.BackupCompleted
+			logger.Info("Update status to BackupCompleted", "name", req.NamespacedName)
 		} else {
 			return ctrl.Result{RequeueAfter: reconcilePeriod}, nil
 		}
 	case foxv1alpha1.BackupError:
 		pvcBackup.Status.BackupStatus = foxv1alpha1.BackupNotStarted
-	case foxv1alpha1.BackupFinished:
+	case foxv1alpha1.BackupCompleted:
 		// Nothing to do
 	default:
 		pvcBackup.Status.BackupStatus = foxv1alpha1.BackupNotStarted

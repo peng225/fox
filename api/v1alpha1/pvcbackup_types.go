@@ -23,7 +23,7 @@ import (
 const (
 	BackupNotStarted = "NotStarted"
 	BackupInProgress = "InProgress"
-	BackupFinished   = "Finished"
+	BackupCompleted  = "Completed"
 	BackupError      = "Error"
 )
 
@@ -50,7 +50,7 @@ type PVCBackupSpec struct {
 type PVCBackupStatus struct {
 	// PVC backup status
 	BackupStatus string `json:"backupStatus,omitempty"`
-	// The date and time when the backup has finished
+	// The date and time when the backup has been completed
 	BackupDateAndTime string `json:"backupDateAndTime,omitempty"`
 }
 
