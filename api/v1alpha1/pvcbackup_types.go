@@ -39,7 +39,8 @@ type PVCBackupSpec struct {
 	//+kubebuilder:validation:Required
 	SourcePVC string `json:"sourcePVC"`
 	// The namespace where the the destination PVC is created
-	DestinationNamespace string `json:"destinationNamespace,omitempty"`
+	//+kubebuilder:validation:Required
+	DestinationNamespace string `json:"destinationNamespace"`
 	// Destination PVC name
 	//+kubebuilder:validation:Required
 	DestinationPVC string `json:"destinationPVC"`

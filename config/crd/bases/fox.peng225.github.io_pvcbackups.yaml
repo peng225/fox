@@ -64,6 +64,7 @@ spec:
                 description: Source PVC name
                 type: string
             required:
+            - destinationNamespace
             - destinationPVC
             - sourceNamespace
             - sourcePVC
